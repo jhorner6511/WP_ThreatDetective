@@ -1,0 +1,90 @@
+<?php
+/*
+Plugin Name: WP_ThreatDetective
+Description: A WordPress plugin that scans WP Plugins and Themes for security vulnerabilities and offers solutions to fix them.
+Author: Johnathon M. Horner
+Author URI: https://github.com/jhorner6511
+License: GPL v3.0
+*/
+
+function scan_plugins() {
+  /* Scans all plugins for known vulnerabilities. */
+  $plugins = [];
+  $url = "https://wpvulndb.com/api/v3/plugins/";
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  $response = curl_exec($ch);
+  curl_close($ch);
+  if ($response !== false) {
+    $data = json_decode($response);
+    for ($i = 0; $i < count($data); $i++) {
+      $plugins[] = $data[$i]->name;
+    }
+  }
+  return $plugins;
+}
+
+function scan_themes() {
+  /* Scans all themes for known vulnerabilities. */
+  $themes = [];
+  $url = "https://wpvulndb.com/api/v3/themes/";
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  $response = curl_exec($ch);
+  curl_close($ch);
+  if ($response !== false) {
+    $data = json_decode($response);
+    for ($i = 0; $i < count($data); $i++) {
+      $themes[] = $data[$i]->name;
+    }
+  }
+  return $themes;
+}
+
+function get_solutions($plugin_name) {
+  /* Gets solutions for a plugin vulnerability. */
+  $url = "https://wpvulndb.com/api/v3/plugins/" . $plugin_name . "/solutions/";
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  $response = curl_exec($ch);
+  curl_close($ch);
+  if ($response !== false) {
+    $data = json_decode($response);
+    return $data;
+  } else {
+    return null;
+  }
+}
+
+function main() {
+  /* Scans plugins and themes for vulnerabilities and prints the results. */
+  $plugins = scan_plugins();
+  $themes = scan_themes();
+  for ($i = 0; $i < count($plugins); $i++) {
+    $vulnerabilities = get_solutions($plugins[$i]);
+    if ($vulnerabilities !== null) {
+      echo "Plugin " . $plugins[$i] . " has the following vulnerabilities:";
+      for ($j = 0; $j < count($vulnerabilities); $j++) {
+        echo "\t" . $vulnerabilities[$j]->title . " (CVE-" . $vulnerabilities[$j]->cve . ")";
+        echo "\t\t" . $vulnerabilities[$j]->description;
+        echo "\t\tSolution: " . $vulnerabilities[$j]->solution;
+      }
+    }
+  }
+  for ($i = 0; $i < count($themes); $i++) {
+    $vulnerabilities = get_solutions($themes[$i]);
+    if ($vulnerabilities !== null) {
+      echo "Theme " . $themes[$i] . " has the following vulnerabilities:";
+      for ($j = 0; $j < count($vulnerabilities); $j++) {
+        echo "\t" . $vulnerabilities[$j]->title . " (CVE-" . $vulnerabilities[$j]->cve . ")";
+        echo "\t\t" . $vulnerabilities[$j]->description;
+        echo "\t\tSolution: " . $vulnerabilities[$j]->solution;
+      }
+    }
+  }
+}
+
+if (isset($_GET["action"]) && $_GET["action"] == "scan") {
+  main();
+}
+?>
